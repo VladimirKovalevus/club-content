@@ -1,0 +1,44 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+
+services:
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: example
+
+  gateway:
+    build: gateway
+    restart: always
+    command:
+
+  object_storage:
+    image: minio/minio:latest
+    restart: always
+    command:
+    ports:
+      - 9000:9000
+      - 9001:9001
+    environment:
+      - MINIO_ROOT_USER: vavan
+      - MINIO_ROOT_PASSWORD: syndafloden
+    volumes:
+      - minio_storage:/data
+
+  server:
+    build: s3_service
+    restart: always
+    command:
+    ports:
+      - 8785:8785
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+volumes:
+  minio_storage:
