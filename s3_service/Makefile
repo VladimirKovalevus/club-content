@@ -12,8 +12,15 @@ all : build
 install :
 	$(INSTALLER)
 
-build :
-	bash build_go.sh
+grpc:
+	cp ../grpc/grpc.proto .
+	cp ../grpc/build_go.sh .
+	sh build_go.sh
+	rm grpc.proto
+	rm build_go.sh
+	go mod tidy
+
+build_docker: grpc
 	docker build . --tag $(TAG)
 
 run :
