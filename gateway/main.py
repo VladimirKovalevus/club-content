@@ -20,7 +20,9 @@ pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
-app = FastAPI()
+app = FastAPI(
+    title = 'Gateway'
+)
 
 class xUser(BaseModel):
     login: str
