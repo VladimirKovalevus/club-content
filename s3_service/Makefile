@@ -7,7 +7,7 @@ else
 	INSTALLER = brew install protobuf
 endif
 
-all : build
+all : run
 
 install :
 	$(INSTALLER)
@@ -23,5 +23,9 @@ grpc:
 build_docker: grpc
 	docker build . --tag $(TAG)
 
-run :
+docker:
 	docker run -d -p 8785:8785 $(TAG)
+
+run: grpc
+	go run main.go
+

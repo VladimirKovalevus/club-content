@@ -14,7 +14,7 @@ build :
 	bash generate.sh
 
 run : build
-	$(CMD) venv/bin/activate && bash build_py.sh && uvicorn main:app --reload --port 9999
+	$(CMD) venv/bin/activate  && uvicorn main:app --reload --port 9999
 
 docker :
 	bash build_py.sh

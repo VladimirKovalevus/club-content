@@ -5,7 +5,7 @@ from jose import jwt
 from typing import Annotated 
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, status, HTTPException, Depends, UploadFile
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 

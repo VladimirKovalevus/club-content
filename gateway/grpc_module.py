@@ -1,5 +1,4 @@
 import grpc
-import grpc_helper
 import grpc_pb2 as pb2
 import grpc_pb2_grpc as grpc_pb2
 
