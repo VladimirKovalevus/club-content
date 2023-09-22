@@ -16,25 +16,70 @@ SECRET_KEY = 'you_wont_pass_man'
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 app = FastAPI()
 
 class xUser(BaseModel):
     login: str
     password: str
-    workspace_id: str
+    workspace_name: str
 
 class xFolder(BaseModel):
     path: str
     skip: int
     take: int
 
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# @app.post("/token", response_model=Token,  tags=['Authorization'])
+# async def login_for_access_token(
+#     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+# ):
+#     # user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+#     # if not user:
+#     #     raise HTTPException(
+#     #         status_code=status.HTTP_401_UNAUTHORIZED,
+#     #         detail="Incorrect username or password",
+#     #         headers={"Authorization": "Bearer"},
+#     #     )
+#     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+#     access_token = create_access_token(
+#         data={"sub": user.username}, expires_delta=access_token_expires
+#     )
+#     return {"access_token": access_token, "token_type": "Bearer"}
+
 @app.post('/create_users', tags=['Users'])
 async def read_users(person: xUser):
-    return {'data': person}
+    login = person.login
+    password = person.password
+
+    result = grpc_module.CreateWorkspace(person.workspace_name)
+    workspace_id = result['workspace_id']
+
+    result = grpc_module.CreateUser(login, password, workspace_id)
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": {"login": login, "workspace_id": workspace_id},}, expires_delta=access_token_expires
+    )
+
+    return {"access_token": access_token, "token_type": "Bearer"}
 
 @app.get('/create_workspace', tags=['Workspace'])
 async def read_users(name: str):
-    return {'data': name}
+    result = grpc_module.CreateWorkspace(name)
+    return {'data': result['workspace_id']}
 
 @app.post('/create_file', tags=['File']) # + workspace_id
 async def read_users(path: str, file: UploadFile = File(None)):
@@ -43,8 +88,6 @@ async def read_users(path: str, file: UploadFile = File(None)):
 @app.post('/create_folder', tags=['Folder']) # + workspace_id
 async def read_users(folder: xFolder):
     return {'data': folder}
-
-
 
 logging.basicConfig(
     level=logging.INFO, 
