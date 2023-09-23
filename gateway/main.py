@@ -8,13 +8,13 @@ from fastapi import FastAPI, status, HTTPException, Depends, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-
+import base64
 import grpc_module
 
 
 SECRET_KEY = 'you_wont_pass_man'
 ALGORITHM = 'HS256'
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 9999
 
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
@@ -86,19 +86,23 @@ async def create_workspace(name: str):
 async def create_file(path: str, file: UploadFile = File(None), current_user: xToken = Depends(oauth2_scheme)):
     token = decode_jwt(current_user)
     workspace_id = token.get('workspace_id')
-    print(file)
-    result = grpc_module.CreateFile(workspace_id, path, file.file.read())
+    result = grpc_module.CreateFile(workspace_id=workspace_id,path= path,buffer=file.file.read())
+    print(result)
+    return {'data': result['id']}
+ 
 
-    return {'data': result['path']}
-
-
-@app.post('/create_folder', tags=['Folder']) 
-async def create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
+@app.post('/get_folder', tags=['Folder']) 
+async def get_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
     token = decode_jwt(current_user)
     workspace_id = token.get('workspace_id')
+    result = grpc_module.GetFolder(path=folder.path,workspace_id=workspace_id, skip=folder.skip,take=folder.take)
 
-    result = grpc_module.CreateFolder(folder.path, workspace_id, folder.skip, folder.take)
-
+    for i in result['files']:
+        if i.__contains__('buffer'):
+            write_byte = i["buffer"]
+            with open("res/"+i["path"],"wb") as f:
+                f.write(base64.b64decode(write_byte))
+        
     return {'data': result['total']}
 
 
@@ -145,11 +149,11 @@ async def test_create_workspace(name: str, current_user: xToken = Depends(oauth2
 
 
 @app.post('/test/create_file', tags=['Test'])
-async def test_create_file( file: UploadFile = File(None)):
+async def test_create_file( file: UploadFile = File(...)):
 
     # result = grpc_module.CreateFile(workspace_id, path, file.file.read())
 
-    return {'data': str(file.file.name)}
+    return {'data': str(file.read())}
 
 @app.post('/test/create_folder', tags=['Test'])
 async def test_create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
