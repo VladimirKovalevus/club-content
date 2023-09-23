@@ -49,11 +49,10 @@ func (s *server) ReadUser(ctx context.Context, req *minio_service.User) (*minio_
 func (s *server) CreateWorkspace(ctx context.Context, req *minio_service.Workspace) (*minio_service.ID, error) {
 	responce := minio_service.ID{}
 	responce.Id = database.CreateBucket(*req)
-
+	fmt.Println(responce)
 	if responce.Id == "" {
 		return &responce, nil
 	}
-	minio.CreateBucket(req.Name)
 	return &responce, nil
 }
 func (s *server) CreateFile(ctx context.Context, req *minio_service.File) (*minio_service.ID, error) {

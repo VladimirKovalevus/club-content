@@ -56,13 +56,13 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-@app.post('/create_users', tags=['Users'])
-async def create_users(person: xUser):
+@app.post('/create_user', tags=['Users'])
+async def create_user(person: xUser):
     login = person.login
     password = person.password
 
     result = grpc_module.CreateWorkspace(person.workspace_name)
-    workspace_id = result['workspace_id']
+    workspace_id = result['id']
 
     result = grpc_module.CreateUser(login, password, workspace_id)
 
@@ -78,15 +78,15 @@ async def create_users(person: xUser):
 async def create_workspace(name: str):
     
     result = grpc_module.CreateWorkspace(name)
-
-    return {'data': result['workspace_id']}
+    print(result)
+    return {'data': result['id']}
 
 
 @app.post('/create_file', tags=['File'])
 async def create_file(path: str, file: UploadFile = File(None), current_user: xToken = Depends(oauth2_scheme)):
     token = decode_jwt(current_user)
     workspace_id = token.get('workspace_id')
-
+    print(file)
     result = grpc_module.CreateFile(workspace_id, path, file.file.read())
 
     return {'data': result['path']}
@@ -145,13 +145,11 @@ async def test_create_workspace(name: str, current_user: xToken = Depends(oauth2
 
 
 @app.post('/test/create_file', tags=['Test'])
-async def test_create_file(path: str, file: UploadFile = File(None), current_user: xToken = Depends(oauth2_scheme)):
-    token = decode_jwt(current_user)
-    workspace_id = token.get('workspace_id')
+async def test_create_file( file: UploadFile = File(None)):
 
     # result = grpc_module.CreateFile(workspace_id, path, file.file.read())
 
-    return {'data': workspace_id}
+    return {'data': str(file.file.name)}
 
 @app.post('/test/create_folder', tags=['Test'])
 async def test_create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
