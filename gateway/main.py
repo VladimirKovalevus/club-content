@@ -56,25 +56,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# @app.post('/token', response_model=Token,  tags=['Authorization'])
-# async def login_for_access_token(
-#     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
-# ):
-#     # user = authenticate_user(fake_users_db, form_data.username, form_data.password)
-#     # if not user:
-#     #     raise HTTPException(
-#     #         status_code=status.HTTP_401_UNAUTHORIZED,
-#     #         detail='Incorrect username or password',
-#     #         headers={'Authorization': 'Bearer'},
-#     #     )
-#     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-#     access_token = create_access_token(
-#         data={'sub': user.username}, expires_delta=access_token_expires
-#     )
-#     return {'access_token': access_token, 'token_type': 'Bearer'}
-
 @app.post('/create_users', tags=['Users'])
-async def read_users(person: xUser):
+async def create_users(person: xUser):
     login = person.login
     password = person.password
 
@@ -85,26 +68,40 @@ async def read_users(person: xUser):
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={'sub': {'login': login, 'workspace_id': workspace_id},}, expires_delta=access_token_expires
+       data={'login': login, 'workspace_id': workspace_id}, expires_delta=access_token_expires
     )
 
     return {'access_token': access_token, 'token_type': 'Bearer'}
 
 
-@app.get('/create_workspace', tags=['Workspace']) # + workspace_id
-async def read_users(name: str):
+@app.get('/create_workspace', tags=['Workspace']) 
+async def create_workspace(name: str):
+    
     result = grpc_module.CreateWorkspace(name)
+
     return {'data': result['workspace_id']}
 
 
+@app.post('/create_file', tags=['File'])
+async def create_file(path: str, file: UploadFile = File(None), current_user: xToken = Depends(oauth2_scheme)):
+    token = decode_jwt(current_user)
+    workspace_id = token.get('workspace_id')
 
-@app.post('/create_file', tags=['File']) # + workspace_id
-async def read_users(path: str, file: UploadFile = File(None)):
-    return {'data': str(file.file.read()), 'path': path}
+    result = grpc_module.CreateFile(workspace_id, path, file.file.read())
 
-@app.post('/create_folder', tags=['Folder']) # + workspace_id
-async def read_users(folder: xFolder):
-    return {'data': folder}
+    return {'data': result['path']}
+
+
+@app.post('/create_folder', tags=['Folder']) 
+async def create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
+    token = decode_jwt(current_user)
+    workspace_id = token.get('workspace_id')
+
+    result = grpc_module.CreateFolder(folder.path, workspace_id, folder.skip, folder.take)
+
+    return {'data': result['total']}
+
+
 
 logging.basicConfig(
     level=logging.INFO, 
@@ -133,12 +130,12 @@ async def test_create_users(person: xUser):
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={'sub': {'login': login, 'workspace_id': workspace_id},}, expires_delta=access_token_expires
+        data={'login': login, 'workspace_id': workspace_id}, expires_delta=access_token_expires
     )
 
     return {'access_token': access_token, 'token_type': 'Bearer'}
 
-@app.get('/test/create_workspace/{name}', tags=['Test']) # + workspace_id
+@app.get('/test/create_workspace/{name}', tags=['Test']) 
 async def test_create_workspace(name: str, current_user: xToken = Depends(oauth2_scheme)):
     token = decode_jwt(current_user)
     # result = grpc_module.CreateWorkspace(name)
@@ -147,4 +144,21 @@ async def test_create_workspace(name: str, current_user: xToken = Depends(oauth2
 
 
 
+@app.post('/test/create_file', tags=['Test'])
+async def test_create_file(path: str, file: UploadFile = File(None), current_user: xToken = Depends(oauth2_scheme)):
+    token = decode_jwt(current_user)
+    workspace_id = token.get('workspace_id')
 
+    # result = grpc_module.CreateFile(workspace_id, path, file.file.read())
+
+    return {'data': workspace_id}
+
+@app.post('/test/create_folder', tags=['Test'])
+async def test_create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
+    token = decode_jwt(current_user)
+    workspace_id = token.get('workspace_id')
+
+    # result = grpc_module.CreateFolder(folder.path, workspace_id, folder.skip, folder.take)
+    total = 5
+
+    return {'data': total}
