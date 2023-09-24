@@ -78,7 +78,7 @@ async def create_user(person: xUser):
 async def create_workspace(name: str):
     
     result = grpc_module.CreateWorkspace(name)
-    print(result)
+
     return {'data': result['id']}
 
 
@@ -86,7 +86,7 @@ async def create_workspace(name: str):
 async def create_file(path: str, file: UploadFile = File(None), current_user: xToken = Depends(oauth2_scheme)):
     token = decode_jwt(current_user)
     workspace_id = token.get('workspace_id')
-    print(file)
+
     result = grpc_module.CreateFile(workspace_id, path, file.file.read())
 
     return {'data': result['path']}
@@ -113,50 +113,3 @@ logging.basicConfig(
 )
 
 
-
-
-
-
-@app.post('/test/create_users', tags=['Test'])
-async def test_create_users(person: xUser):
-    login = person.login
-    password = person.password
-
-    workspace_id = '123'
-    # result = grpc_module.CreateWorkspace(person.workspace_name)
-    # workspace_id = result['workspace_id']
-
-    # result = grpc_module.CreateUser(login, password, workspace_id)
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={'login': login, 'workspace_id': workspace_id}, expires_delta=access_token_expires
-    )
-
-    return {'access_token': access_token, 'token_type': 'Bearer'}
-
-@app.get('/test/create_workspace/{name}', tags=['Test']) 
-async def test_create_workspace(name: str, current_user: xToken = Depends(oauth2_scheme)):
-    token = decode_jwt(current_user)
-    # result = grpc_module.CreateWorkspace(name)
-    # return {'data': result['workspace_id']}
-    return {'data': token.get('login')}
-
-
-
-@app.post('/test/create_file', tags=['Test'])
-async def test_create_file( file: UploadFile = File(None)):
-
-    # result = grpc_module.CreateFile(workspace_id, path, file.file.read())
-
-    return {'data': str(file.file.name)}
-
-@app.post('/test/create_folder', tags=['Test'])
-async def test_create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
-    token = decode_jwt(current_user)
-    workspace_id = token.get('workspace_id')
-
-    # result = grpc_module.CreateFolder(folder.path, workspace_id, folder.skip, folder.take)
-    total = 5
-
-    return {'data': total}
