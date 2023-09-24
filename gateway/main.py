@@ -92,14 +92,16 @@ async def create_file(path: str, file: UploadFile = File(None), current_user: xT
     return {'data': result['path']}
 
 
-@app.post('/create_folder', tags=['Folder']) 
-async def create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
+@app.post('/get_folder', tags=['Folder']) 
+async def get_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
     token = decode_jwt(current_user)
     workspace_id = token.get('workspace_id')
 
-    result = grpc_module.CreateFolder(folder.path, workspace_id, folder.skip, folder.take)
+    result = grpc_module.GetFolder(folder.path, workspace_id, folder.skip, folder.take)
 
     return {'data': result['total']}
+
+
 
 
 
@@ -135,7 +137,7 @@ async def test_create_users(person: xUser):
 
     return {'access_token': access_token, 'token_type': 'Bearer'}
 
-@app.get('/test/create_workspace/{name}', tags=['Test']) 
+@app.get('/test/create_workspace', tags=['Test']) 
 async def test_create_workspace(name: str, current_user: xToken = Depends(oauth2_scheme)):
     token = decode_jwt(current_user)
     # result = grpc_module.CreateWorkspace(name)
@@ -151,7 +153,7 @@ async def test_create_file(path: str, file: UploadFile = File(None), current_use
 
     # result = grpc_module.CreateFile(workspace_id, path, file.file.read())
 
-    return {'data': workspace_id}
+    return {'data': file.file.name}
 
 @app.post('/test/create_folder', tags=['Test'])
 async def test_create_folder(folder: xFolder, current_user: xToken = Depends(oauth2_scheme)):
