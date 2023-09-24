@@ -78,7 +78,7 @@ async def create_user(person: xUser):
 async def create_workspace(name: str):
     
     result = grpc_module.CreateWorkspace(name)
-    print(result)
+
     return {'data': result['id']}
 
 
