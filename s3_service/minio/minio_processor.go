@@ -58,12 +58,13 @@ func UploadFile(workspace string, path string) []byte {
 	defer file.Close()
 
 	fileStat, statErr := file.Stat()
+
 	if statErr != nil {
+		fmt.Println(fileStat)
 		return nil
 	}
 	buffer := make([]byte, fileStat.Size)
 	file.Read(buffer)
-
 	return buffer
 }
 func DeleteFile(path string, workspace string) {

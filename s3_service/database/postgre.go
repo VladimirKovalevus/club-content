@@ -176,33 +176,47 @@ func CreateFile(file minio_service.File) string {
 	for i := 0; i < len(path)-2; i++ {
 		newPath = "/" + path[i]
 	}
-	res, err := myPostgres.Query("select * from folders where path = '$1' and workspace_id= '$2';", newPath, file.WorkspaceId)
-	if err != nil {
-		status.Status = false
-		return ""
-	}
-	defer res.Close()
+	if newPath != "" {
+		res, err := myPostgres.Query("select * from folders where path = '$1' and workspace_id= '$2';", newPath, file.WorkspaceId)
+		if err != nil {
+			status.Status = false
+			return ""
+		}
+		defer res.Close()
 
-	var fold types.UploadFileModel
-	scanErr := res.Scan(&fold)
-	if scanErr != nil {
-		status.Status = false
-		return ""
+		var fold types.UploadFileModel
+		scanErr := res.Scan(&fold)
+		if scanErr != nil {
+			status.Status = false
+			return ""
+		}
+		_, inErr := myPostgres.Exec("insert into files values(default,$1,$2,$3);", file.Path, fold.Id, file.WorkspaceId)
+		status.Status = true
+		if inErr != nil {
+			status.Status = false
+		}
+		fmt.Println(fold)
+		fil, ferr := myPostgres.Query("select * from folders where path = '$1' and workspace_id= '$2';", newPath, file.WorkspaceId)
+		if ferr != nil {
+			fmt.Println(ferr)
+			return ""
+		}
+		var id string
+		fil.Scan(&id)
+		return id
+	} else {
+		var id string
+
+		inErr := myPostgres.QueryRow("insert into files values(default,$1,null,$2) returning id;", file.Path, file.WorkspaceId).Scan(&id)
+		status.Status = true
+		if inErr != nil {
+			fmt.Println(inErr)
+			return ""
+		}
+
+		return id
 	}
-	_, inErr := myPostgres.Exec("insert into files values(default,$1,$2,$3);", file.Path, fold.Id, file.WorkspaceId)
-	status.Status = true
-	if inErr != nil {
-		status.Status = false
-	}
-	fmt.Println(fold)
-	fil, ferr := myPostgres.Query("select * from folders where path = '$1' and workspace_id= '$2';", newPath, file.WorkspaceId)
-	if ferr != nil {
-		fmt.Println(ferr)
-		return ""
-	}
-	var id string
-	fil.Scan(&id)
-	return id
+
 }
 func GetFile(path string, workspace string) string {
 	scan := myPostgres.QueryRow("select * from files where path = $1 and workspace_id = $2;", path, workspace)
@@ -225,24 +239,46 @@ func DeleteFile() bool {
 func PullFolder(path string, workspace string) minio_service.Files {
 
 	files := minio_service.Files{}
-	scan := myPostgres.QueryRow(`select path from files where path like $1% and path not like $1/%/ and workspace_id = $2;`, path, workspace)
-	var file minio_service.File
-	switch err := scan.Scan(&files.Files); err {
-	case sql.ErrNoRows:
-		fmt.Println("No rows were returned!")
-	case nil:
-		fmt.Println(file)
-	}
+	if path != "" {
+		scan := myPostgres.QueryRow(`select path from files where path like $1% and path not like $1/%/ and workspace_id = $2;`, path, workspace)
+		var file minio_service.File
+		switch err := scan.Scan(&files.Files); err {
+		case sql.ErrNoRows:
+			fmt.Println("No rows were returned!")
+		case nil:
+			fmt.Println(file)
+		}
+	} else {
+		scan, err := myPostgres.Query(`select path from files where parent_id is null and workspace_id = $1;`, workspace)
+		if err != nil {
+			fmt.Println("ASDASDASd")
+			fmt.Println(err)
 
+			return files
+		}
+		var path string
+		for scan.Next() {
+
+			scan.Scan(&path)
+			fmt.Println(path + "<-- ia tuta")
+			var file minio_service.File
+			file.Path = path
+			files.Files = append(files.Files, &file)
+
+		}
+		scan.Close()
+	}
+	fmt.Println(files.Files)
+	wrk := GetWorkspaceName(workspace)
 	for _, el := range files.Files {
 
 		if strings.LastIndex(el.Path, "png") == len(el.Path)-3 || strings.LastIndex(el.Path, "jpg") == len(el.Path)-3 {
-			buffer := minio.UploadFile(workspace, el.Path)
+			buffer := minio.UploadFile(wrk, el.Path)
 			compressed, _ := fileprocessor.CompressImage(buffer, 10)
 			el.Buffer = compressed
 		}
 
 	}
-
+	files.Total = int32(len(files.Files))
 	return files
 }
